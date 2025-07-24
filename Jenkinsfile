@@ -1,6 +1,5 @@
 ﻿pipeline {
     agent any
-
     stages {
         stage('Clone') {
             steps {
@@ -26,24 +25,30 @@
         stage('Publish to folder') {
             steps {
                 echo 'Publishing...'
-                bat 'dotnet publish -c Release -o ./publish'
+                bat 'dotnet publish -c Release -o publish'
             }
         }
 
         stage('Copy to wwwroot') {
             steps {
                 echo 'Copying published files to wwwroot'
-                bat 'xcopy "%WORKSPACE%\\publish" "C:\\wwwroot\\myproject" /E /Y /I /R'
+                bat '''
+                    if not exist "C:\\wwwroot\\myproject" mkdir "C:\\wwwroot\\myproject"
+                    xcopy /E /Y /I /R publish\\* "C:\\wwwroot\\myproject\\"
+                '''
             }
         }
 
         stage('Deploy to IIS') {
             steps {
+                echo 'Deploying to IIS'
                 powershell '''
-                Import-Module WebAdministration
-                if (-not (Test-Path IIS:\\Sites\\MySite)) {
-                    New-Website -Name "MySite" -Port 81 -PhysicalPath "C:\\wwwroot\\myproject"
-                }
+                    Import-Module WebAdministration
+                    if (-not (Test-Path IIS:\\Sites\\MySite)) {
+                        New-Website -Name "MySite" -Port 81 -PhysicalPath "C:\\wwwroot\\myproject" -ApplicationPool ".NET v4.5"
+                    } else {
+                        Set-ItemProperty IIS:\\Sites\\MySite -Name physicalPath -Value "C:\\wwwroot\\myproject"
+                    }
                 '''
             }
         }
