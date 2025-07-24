@@ -1,57 +1,51 @@
 ﻿pipeline {
- agent any
- 
- stages {
-	stage('clone'){
-		steps {
-			echo 'Cloning source code'
-			git branch:'main', url: 'https://github.com/vdprogramm/QliTV.git'
-		}
-	} // end clone
+    agent any
 
-  } // end stages
+    stages {
+        stage('Clone') {
+            steps {
+                echo 'Cloning source code'
+                git branch: 'main', url: 'https://github.com/vdprogramm/QliTV.git'
+            }
+        }
 
-  stage('restore package') {
-		steps
-		{
-			echo 'Restore package'
-			bat 'dotnet restore'
-		}
-	}
+        stage('Restore Package') {
+            steps {
+                echo 'Restoring packages...'
+                bat 'dotnet restore'
+            }
+        }
 
-	stage ('tests') {
-		steps{
-			echo 'running test...'
-			bat 'dotnet test --no-build --verbosity normal'
-		}
-	}
+        stage('Test') {
+            steps {
+                echo 'Running tests...'
+                bat 'dotnet test --no-build --verbosity normal'
+            }
+        }
 
-	stage ('public den t thu muc')
-	{
-		steps{
-			echo 'Publishing...'
-			bat 'dotnet publish -c Release -o ./publish'
-		}
-	}
+        stage('Publish to folder') {
+            steps {
+                echo 'Publishing...'
+                bat 'dotnet publish -c Release -o ./publish'
+            }
+        }
 
-	stage ('Publish') {
-		steps {
-		echo 'public 2 runnig folder'
-		//iisreset /stop // stop iis de ghi de file 
-			bat 'xcopy "%WORKSPACE%\\publish" /E /Y /I /R "c:\\wwwroot\\myproject"'
- 		}
-	}
+        stage('Copy to wwwroot') {
+            steps {
+                echo 'Copying published files to wwwroot'
+                bat 'xcopy "%WORKSPACE%\\publish" "C:\\wwwroot\\myproject" /E /Y /I /R'
+            }
+        }
 
-	stage('Deploy to IIS') {
+        stage('Deploy to IIS') {
             steps {
                 powershell '''
-               
-                # Tạo website nếu chưa có
                 Import-Module WebAdministration
                 if (-not (Test-Path IIS:\\Sites\\MySite)) {
-                    New-Website -Name "MySite" -Port 81 -PhysicalPath "c:\\test1-netcore"
+                    New-Website -Name "MySite" -Port 81 -PhysicalPath "C:\\wwwroot\\myproject"
                 }
                 '''
             }
-        } // end deploy iis
-}//end pipeline
+        }
+    }
+}
